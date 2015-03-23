@@ -1,0 +1,129 @@
+instance_state ( __BAR__ ) = aggregate ( 
+  filter ( 
+    cross_join ( 
+      filter ( 
+        list ('arrays'),
+        name = __BAR__
+      ) AS A,
+      list('chunk map') AS C
+    ),
+    A.id = C.uaid
+  ),
+  count(*) AS num_chunks,
+  sum ( C.nelem ) AS num_cells,
+  min ( C.nelem ) AS min_cells_per_chunk,
+  max ( C.nelem) AS max_cells_per_chunk,
+  avg ( C.nelem ) AS avg_cells_per_chunk,
+  C.inst
+);
+
+array_chunk_details ( __BAR__ ) = aggregate (
+  filter (
+    cross_join (
+      filter (
+        list ('arrays'),
+        name = __BAR__
+      ) AS A,
+      list('chunk map') AS C
+    ),
+    A.id = C.uaid
+  ),
+  count(*) AS num_chunks,
+  sum ( C.nelem ) AS num_cells,
+  min ( C.nelem ) AS min_cells_per_chunk,
+  max ( C.nelem) AS max_cells_per_chunk,
+  avg ( C.nelem ) AS avg_cells_per_chunk,
+  sum ( C.usize ) AS total_array_size_in_bytes,
+  sum ( C.csize ) AS total_compressed_array_size_in_bytes,
+  sum ( C.asize ) AS total_allocated_size_in_bytes
+);
+
+quantile_chunk_cell_count ( __BAR__ ) = quantile ( 
+ project ( 
+   filter (
+     cross_join (
+       redimension (
+         filter ( list('arrays'), name = __BAR__ ),
+         < uaid : int64 NULL>
+         [ aid=0:*,1000,0 ],
+         MAX ( uaid ) AS uaid
+        ) AS A,
+        list('chunk map') AS C
+      ),
+      A.uaid = C.uaid
+    ),
+    nelem
+  ),
+  10
+);
+
+missMatchedMissingReason ( a, b ) =
+        ( missing_reason( a ) != missing_reason ( b ) );
+
+missMatchedReal ( a, b ) =
+        iif ( ( is_nan( a ) OR is_nan ( b ) ),
+              ( NOT ( is_nan( a ) AND is_nan ( b ) ) ),
+              ( abs( a - b ) > 0.000001 )
+            );
+
+missMatchedAttr ( a, b ) = iif ( missMatchedMissingReason ( a, b ) , 
+                               true, 
+                               iif ((( missing_reason( a ) >= 0 ) OR
+                                     ( missing_reason( b ) >= 0 )),
+                                    false,
+                                    ( a != b ) 
+                               )
+                         );
+
+missMatchedRealAttr ( a, b ) = iif ( missMatchedMissingReason ( a, b ), 
+                                   true,
+                                   iif ((( missing_reason( a ) >= 0 ) OR 
+                                         ( missing_reason( b ) >= 0 )),
+                                        false,
+                                        missMatchedReal ( a, b )
+                                   )
+                                 );
+
+identical ( A, B, a, b ) = project ( 
+  apply ( 
+    join ( 
+      aggregate ( A, count(*) AS CNT_A ) AS _A_,
+      join ( 
+        aggregate ( A, count(*) AS CNT_B ) AS _B_,
+        aggregate ( 
+          filter ( 
+            join ( A, B ),
+            NOT missMatchedAttr ( a, b )
+          ),
+          count(*) AS CNT_AB 
+        ) AS _C_
+      )
+    ),
+    res,
+    _A_.CNT_A = _B_.CNT_B AND _A_.CNT_A = _C_.CNT_AB
+  ),
+  res
+);
+
+identicalReal ( A, B, a, b ) = project (
+  apply (
+    join (
+      aggregate ( A, count(*) AS CNT_A ) AS _A_C_,
+      join (
+        aggregate ( A, count(*) AS CNT_B ) AS _B_C_,
+        aggregate (
+          filter (
+            join ( attribute_rename ( project ( A, a ), a, _a_ ) AS _A_,
+                   attribute_rename ( project ( B, b ), b, _b_ ) AS _B_ 
+                 ),
+            NOT missMatchedRealAttr ( _A_._a_, _B_._b_ )
+          ),
+          count(*) AS CNT_AB 
+        ) AS _C_
+      )
+    ),
+    res,
+    _A_C_.CNT_A = _B_C_.CNT_B AND _A_C_.CNT_A = _C_.CNT_AB
+  ),
+  res
+);
