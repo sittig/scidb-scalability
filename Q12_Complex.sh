@@ -33,14 +33,14 @@ echo "+----------------+"
 CMD_COMPUTE_COUNT_ALL="
 SELECT COUNT(*) FROM CRV_DATA
 "
-exec_aql_query_wd "${CMD_COMPUTE_COUNT_ALL}"
+time exec_aql_query_wd "${CMD_COMPUTE_COUNT_ALL}"
 #
 #  Q1:
 echo "+--------------------+"
 echo "|  Q1 - AVG, STDEV   |"
 echo "+--------------------+"
 CMD_HYGIENE_M_STD_ALL="DROP ARRAY CRV_MEAN_STD"
-exec_aql_query_wd "${CMD_HYGIENE_M_STD_ALL}" -n 
+time exec_aql_query_wd "${CMD_HYGIENE_M_STD_ALL}" -n 
 #
 CMD_COMPUTE_M_STD_ALL="
 SET NO FETCH;
@@ -50,7 +50,7 @@ SELECT AVG( value ) AS AVG_VAL,
   FROM CRV_DATA
 GROUP BY attr_num
 "
-exec_aql_query_wd "${CMD_COMPUTE_M_STD_ALL}" 
+time exec_aql_query_wd "${CMD_COMPUTE_M_STD_ALL}" 
 #
 # Result check: which three attributes have the largest stdev and what is the 
 #               mean value in each case? 
@@ -101,7 +101,7 @@ SELECT *
 "
 
 # ksb -- uncommented next line. comment again if necessary
-exec_aql_query_wd "${CMD_COMPUTE_TOP_N_STDEVS}"
+time exec_aql_query_wd "${CMD_COMPUTE_TOP_N_STDEVS}"
 #
 #  {n} METRIC,      ATTR_NUM
 #  {0} 1.46179e+12, 7
@@ -151,7 +151,7 @@ filter (
   n%${ROW_DIM_LENGTH} = ( ${ROW_DIM_LENGTH} / 2 )
 )
 "
-exec_afl_query_wd "${CMD_COMPUTE_MEDIAN_AS_SORT}" 
+time exec_afl_query_wd "${CMD_COMPUTE_MEDIAN_AS_SORT}" 
 #
 #  AND attribute > 1 
 #  AND attribute < 37
