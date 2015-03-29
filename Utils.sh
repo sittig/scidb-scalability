@@ -34,13 +34,14 @@ exec_aql_query() {
 #
 exec_afl_query_wd() {
     echo "Query: ${1}"
-    /usr/bin/time -f "Elapsed Time: %E" 
+    time -f "Elapsed Time: %E" 
     iquery -o dcsv -p ${SCIDB_PORT_NUMBER} ${2} -aq "${1}";
 };
 #
 exec_aql_query_wd() {
     echo "Query: ${1}"
-    /usr/bin/time -f "Elapsed Time: %E" iquery -o dcsv -p ${SCIDB_PORT_NUMBER} ${2} -q "${1}";
+    time -f "Elapsed Time: %E" 
+    iquery -o dcsv -p ${SCIDB_PORT_NUMBER} ${2} -q "${1}";
 };
 #
 #------------------------------------------------------------------------------
