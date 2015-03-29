@@ -1,0 +1,981 @@
+--
+--  File: Benchmark/Complex/schema/Multiply.aql
+--
+-- About:
+--
+--    This set of AFL/AQL instructions duplicates the contents of the 
+--  minimal CRV_DATA multiple times to get to up to 1,000,000,000 rows in 
+--  the array used by the queries (CRV_DATA). We start with an array 
+--  that has 100,000 "observation" rows and 108 "attribute" columns. 
+--
+--  This granule size array has the following shape: 
+--
+--  CRV_DATA<value:double> [row_num=0:*,1000,0,attr_num=0:*,1000,0]
+--
+--  NOTE: This is loaded into SciDB using the Create_and_Load.sh script. 
+--        The base data is located at: 
+--
+SELECT MAX ( row_num ) FROM CRV_DATA;
+-- {i} MAX
+-- {0} 99999
+--
+------------------------------------------------------------------------------
+--
+--   1. Scale from 100,000 to 1,000,000 rows. 
+--
+--  Create the target array. Has the same size and shape as the CRV_DATA
+-- array, but it will (of course) contain more data. 
+--
+DROP ARRAY CRV_DATA_1M_TEST;
+CREATE ARRAY CRV_DATA_1M_TEST
+< value : float> 
+[ row_num=0:*,1000,0, attr_num=0:*,1000,0];
+--
+--  Initialize the 1M_TEST array with the first rows from the CRV_DATA 
+-- load array. 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET NO FETCH;
+SELECT value
+  INTO CRV_DATA_1M_TEST
+  FROM between ( CRV_DATA, 0, 0, 99999, null );
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #1 - should be 10,800,000 cells, and max of 99999
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1M_TEST;
+--
+-- Double the size once. . . 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 1 * 10000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1M_TEST
+  ),
+  CRV_DATA_1M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #2 - should be 21,600,000, and 199,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1M_TEST;
+
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Double the size a second time ... 
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 2 * 10000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1M_TEST
+  ),
+  CRV_DATA_1M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+
+--
+--  Check #3 - Should be 43,200,000, and 399,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1M_TEST;
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Double it a third time, to get to 800,000 rows ... 
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 4 * 10000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1M_TEST
+  ),
+  CRV_DATA_1M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #4 - Should be 86,400,000, and 799,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1M_TEST;
+--
+--  Last addition. In this pass, we only want to add 2,000,000 rows this time. 
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 8 * 10000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1M_TEST, 0, 0, 199999, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1M_TEST
+  ),
+  CRV_DATA_1M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+-- Final check - Should be 108,000,000, and 999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1M_TEST;
+
+--
+--  Rename the CRV_DATA_1M_TEST to CRV_DATA_1M
+RENAME ARRAY CRV_DATA_1M_TEST TO CRV_DATA_1M;
+--
+------------------------------------------------------------------------------
+--
+--  2. Next stop, 10,000,000 rows. 
+--
+--  Create the target array. Has the same size and shape as the CRV_DATA
+-- array, but it will (of course) contain more data. 
+--
+DROP ARRAY CRV_DATA_10M_TEST;
+CREATE ARRAY CRV_DATA_10M_TEST
+< value:float > 
+[ row_num=0:*,1000,0, attr_num=0:*,1000,0];
+--
+--  Initialize the 10M_TEST array. 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AQL;
+SET NO FETCH;
+SELECT value
+  INTO CRV_DATA_10M_TEST
+  FROM between ( CRV_DATA_1M, 0, 0, 999999, null );
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #1 - should be 108,000,000 cells, and max of 999999
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_10M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_10M_TEST;
+--
+-- Double the size once. . . 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 1 * 100000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_10M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_10M_TEST
+  ),
+  CRV_DATA_10M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #2 - should be 216,000,000, and 1,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_10M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_10M_TEST;
+--
+--  Double the size a second time ... 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 2 * 100000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_10M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_10M_TEST
+  ),
+  CRV_DATA_10M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #3 - Should be 432,000,000, and 3,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_10M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_10M_TEST;
+--
+--  Double it a third time, to get to 8,000,000 rows ... 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 4 * 100000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_10M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_10M_TEST
+  ),
+  CRV_DATA_10M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #4 - Should be 864,000,000, and 7,999,999 max. 
+--
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_10M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_10M_TEST;
+--
+--  Last addition. In this pass, we only want to add 2,000,000 rows this time. 
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 8 * 100000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_10M_TEST, 0, 0, 1999999, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_10M_TEST
+  ),
+  CRV_DATA_10M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+-- Final check - Should be 1,080,000,000, and 9,999,999 max. 
+--
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_10M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_10M_TEST;
+--
+--  Rename the CRV_DATA_10M_TEST to CRV_DATA_10M
+RENAME ARRAY CRV_DATA_10M_TEST TO CRV_DATA_10M;
+--
+-------------------------------------------------------------------------------
+--
+--  Now. Blow the data up to 100M. 
+--
+DROP ARRAY CRV_DATA_100M_TEST;
+CREATE ARRAY CRV_DATA_100M_TEST
+< value : float >
+[ row_num=0:*,1000,0, attr_num=0:*,1000,0];
+--
+--  Initialize the 10M_TEST array.
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AQL;
+SET NO FETCH;
+SELECT value
+  INTO CRV_DATA_100M_TEST
+  FROM between ( CRV_DATA_10M, 0, 0, 9999999, null );
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  (32 instances) 10 seconds ... 
+--
+--  Check #1 - Should be 1,080,000,000, and 9,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_100M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+--
+--  1. 
+--
+--  Double the data size the first time ... 
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 1 * 10000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_100M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_100M_TEST
+  ),
+  CRV_DATA_100M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--   (32 instances) 200, 205 seconds. . . 
+--
+--  Check # 2 - Should be 2,160,000,000, and 19,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_100M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  2. 
+--
+--  Double the data size the second time ...
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 2 * 10000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_100M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_100M_TEST
+  ),
+  CRV_DATA_100M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  Check #3 - Should be 4,320,000,000, and 39,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_100M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--
+--  3. 
+--  Double the data size the third time ...
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 4 * 10000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_100M_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_100M_TEST
+  ),
+  CRV_DATA_100M_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  (32 instances ) 943, 812 seconds ... 
+--
+--  Check #4 - Should be 8,640,000,000 and 79,999,999 max.
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_100M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+--
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--  4. 
+--
+--  And finally, add another 20,000,000 rows to bring us up to the 
+--  100,000,000 target. 
+SET LANG AFL;
+SET NO FETCH;
+insert (
+  cast (
+    substitute (
+      ( SELECT MIN ( value ) AS value
+          FROM  ( SELECT row_num + ( 8 * 10000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_100M_TEST, 0, 0, 19999999, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_100M_TEST
+  ),
+  CRV_DATA_100M_TEST
+);
+--
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--
+--  Check #5 - Should be 10,800,000,000, and 99,999,999 max. 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_100M_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+--
+-- {i} COUNT
+-- {0} 10800000000
+-- AQL% SELECT MAX ( row_num ) FROM CRV_DATA_100M_TEST;
+-- {i} MAX
+-- {0} 99,999,999
+--
+--
+SET LANG AQL;
+RENAME ARRAY CRV_DATA_100M_TEST TO CRV_DATA_100M;
+--
+-------------------------------------------------------------------------------
+--
+--  The unload ... 
+--   
+--   NOTE: These are very large files, and unless you're planning to measure 
+--         load and redimension / store times, these aren't necessary. 
+--
+SET LANG AFL;
+SET NO FETCH;
+save ( unpack(CRV_DATA_1M,I),
+       '/datadisk2/data/CRV_DATA_1M.bin',
+       0,
+       '(int64, int64, float )'
+     );
+--
+SET LANG AFL;
+SET NO FETCH;
+save ( unpack(CRV_DATA_10M,I), 
+       '/datadisk3/data/CRV_DATA_10M.bin',
+       0,
+       '(int64, int64, float )'
+     );
+--
+SET LANG AFL;
+SET NO FETCH;
+save ( unpack(CRV_DATA_100M,I),
+       '/datadisk4/data/CRV_DATA_100M.bin',
+       0,
+       '(int64, int64, float )'
+     );
+--
+--  Now ... reload the data ... 
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+store (
+  redimension (
+    input ( < row_num : int64, attr_num : int64, value : float >
+            [ RowNum=0:*,100000,0 ],
+            '/datadisk2/data/CRV_DATA_1M.bin',
+            0,
+            '(int64,int64,float)'
+          ),
+    CRV_DATA_1M
+  ),
+  CRV_DATA_1M_LOAD_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+store (
+  redimension (
+    input ( < row_num : int64, attr_num : int64, value : float >
+            [ RowNum=0:*,100000,0 ],
+            '/datadisk3/data/CRV_DATA_10M.bin',
+            0,
+            '(int64,int64,float)'
+          ),
+    CRV_DATA_10M
+  ),
+  CRV_DATA_10M_LOAD_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+SET LANG AFL;
+SET NO FETCH;
+store ( 
+  redimension ( 
+    input ( < row_num : int64, attr_num : int64, value : float >
+            [ RowNum=0:*,100000,0 ],
+            '/datadisk4/data/CRV_DATA_100M.bin',
+            0, 
+            '(int64,int64,float)' 
+          ),
+    CRV_DATA_100M
+  ),
+  CRV_DATA_100M_LOAD_TEST
+);
+--
+SET LANG AQL;
+SET FETCH;
+SELECT * FROM op_now();
+--
+--
+-------------------------------------------------------------------------------
+--
+--
+--  Finally, blow the data up to 1B. We will repeat the approach above. 
+--
+DROP ARRAY CRV_DATA_1B_TEST;
+CREATE ARRAY CRV_DATA_1B_TEST
+<value:float>
+[ row_num=0:*,1000,0, attr_num=0:*,1000,0];
+--
+--  Initialize the 1B array.
+SET LANG AQL;
+SET NO FETCH;
+SELECT value
+  INTO CRV_DATA_1B_TEST
+  FROM between ( CRV_DATA_100M, 0, 0, 99999999, null );
+
+--
+--  Check #1 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) AS CNT, MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the first time ... 
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 1 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+--
+--  Check # 2 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) AS CNT, MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the second time ...
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 2 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+
+--
+--  Check #3 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the third time ...
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 4 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : double > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+
+--
+--  Check #4 - 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  And finally, add another 20,000,000 rows to bring us up to the 
+--  100,000,000 target. 
+SET LANG AFL;
+SET NO FETCH;
+insert (
+  cast (
+    substitute (
+      ( SELECT MIN ( value ) AS value
+          FROM  ( SELECT row_num + ( 8 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, 199999999, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < val : double > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+--
+--  Check #5 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+--
+--  Rename the CRV_DATA_1B_TEST to CRV_DATA_1B
+SET LANG AQL;
+RENAME ARRAY CRV_DATA_1B_TEST TO CRV_DATA_1B;
+--
+-------------------------------------------------------------------------------
+--
+--  TODO Thoughts: 
+--
+--   1. The data is very logically sparse. That is, there are lots and lots of 
+--      value = 0 cells. It might be better to "sparsify" this data. 
+--
+--      NOTE: this won't help the pearsons (gemm(...)) nor the PCA (gesvd(...))
+--      queries. We will need to adjust the workload queries. 
+--
+-------------------------------------------------------------------------------
+--
+DROP ARRAY CRV_DATA_1B_TEST;
+CREATE ARRAY CRV_DATA_1B_TEST
+< value:float >
+[ row_num=0:*,1000,0, attr_num=0:*,1000,0];
+
+--
+--  Initialize the 100M_TEST array.
+SET LANG AQL;
+SET NO FETCH;
+SELECT value
+  INTO CRV_DATA_1B_TEST
+  FROM between ( CRV_DATA_100M, 0, 0, 99999999, null );
+
+--
+--  Check #1 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the first time ... 
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 1 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+
+--
+--  Check # 2 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the second time ...
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 2 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+
+--
+--  Check #3 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  Double the data size the third time ...
+SET LANG AFL;
+SET NO FETCH;
+insert ( 
+  cast ( 
+    substitute ( 
+      ( SELECT MIN ( value ) AS value 
+          FROM  ( SELECT row_num + ( 4 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, null, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+
+--
+--  Check #4 - 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+
+--
+--  And finally, add another 20,000,000 rows to bring us up to the 
+--  100,000,000 target. 
+SET LANG AFL;
+SET NO FETCH;
+insert (
+  cast (
+    substitute (
+      ( SELECT MIN ( value ) AS value
+          FROM  ( SELECT row_num + ( 8 * 100000000 ) as new_row_num,
+                         attr_num AS new_attr_num,
+                         value
+                    FROM between ( CRV_DATA_1B_TEST, 0, 0, 199999999, null )
+                )
+        REDIMENSION BY [ new_row_num=0:*,1000,0,new_attr_num=0:*,1000,0 ]
+      ),
+      build ( < value : float > [M=0:0,1,0], '[(0.0)]', true )
+    ),
+    CRV_DATA_1B_TEST
+  ),
+  CRV_DATA_1B_TEST
+);
+--
+--  Check #5 
+SET LANG AQL;
+SET FETCH;
+SELECT COUNT(*) FROM CRV_DATA_1B_TEST;
+SELECT MAX ( row_num ) FROM CRV_DATA_1B_TEST;
+--
+--  Rename the CRV_DATA_1B_TEST to CRV_DATA_1B
+SET LANG AQL;
+RENAME ARRAY CRV_DATA_1B_TEST TO CRV_DATA_1B;
+--
+-------------------------------------------------------------------------------
+
